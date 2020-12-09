@@ -25,7 +25,9 @@
 
 //todo: write list request
     //todo: write list request main thread
-    
+        //todo: for each server, initiate connection
+            //todo: traverse or add to e a linked list that stores file names, and mark a byte for each chunk
+        //todo: read through linked list to print available files
     //practice: write list request multi thread routine
 
 //todo: write main
