@@ -1,14 +1,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
-#define NUM_SERVERS 4 //todo: make this work for variable number of servers
+#define NUM_SERVERS 4 //practice: make this work for variable number of servers
 //todo: import standard io, networking, (maybe) multithreading, and hashing
 
 //todo: write put request
 void put(char * filename, char * username, char * password, struct sockaddr_in server_addrs[NUM_SERVERS]){
-    
-}
-    //todo: write put request main thread
+    FILE * fd;
+    fd = fopen(filename, "r");
+    if (fd < 0){
+        printf("File not found!\n");
+    } 
+    else{
         //todo: read file in chunks
             //todo: error if the file isn't found
             //todo: progressivley update state of md5 object
@@ -17,8 +20,9 @@ void put(char * filename, char * username, char * password, struct sockaddr_in s
         //todo: save each chunk of the file locally ec: encrypt chunks with simple encryption (xor password for now)
         //todo: for each server, intiate connection, get ok back, send appropriate chunks according to partition strategy
         //todo: delete local files
-
-    //practice: write put request multi thread routine (one thread for each server)
+    }
+}
+//practice: write put request multi thread routine (one thread for each server)
 
 //todo: write get request
     //todo: write get request main thread
