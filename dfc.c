@@ -13,7 +13,9 @@ void put(char * filename, char * username, char * password, struct sockaddr_in s
     char chunkname[43];
     char buf[1028];
     MD5_CTX mdcontext;
-    int bytes, bytes_left, filesize, chunksize, hash;
+    int bytes, bytes_left, filesize, chunksize, hash, sock_fd, partition;
+    int partitions[4][2] = {{1,2},{2,3},{3,4},{4,1}}; //practice: come up with partitions dynamically
+
     
     filesize = 0;
     source_fd = fopen(filename, "r");
@@ -37,6 +39,7 @@ void put(char * filename, char * username, char * password, struct sockaddr_in s
         strcpy(chunkname+1,filename);
         chunkname[0] = '.';
         chunkname[strlen(filename) + 1] = '.';
+        chunkname[strlen(filename) + 3] = '\0';
         for (int i = 1; i <=  NUM_SERVERS; i++){
             chunkname[strlen(filename) + 2] = i + '0';
             printf("%s\n",chunkname);
@@ -59,11 +62,29 @@ void put(char * filename, char * username, char * password, struct sockaddr_in s
             }
             fclose(chunk_fd);
         }
-        //todo: compute md5 hash, figure out partition strategy
-        //ec: encrypt chunks with simple encryption (xor password for now)
-        //todo: for each server, intiate connection, get ok back, send appropriate chunks according to partition strategy
-        //todo: delete local files
         fclose(source_fd);
+
+        //ec: encrypt chunks with simple encryption (xor password for now)
+        for (int i = 0; i <= NUM_SERVERS; i++){
+            //figure out partition strategy
+            partition = i - hash;
+            if (partition < 0) partition += NUM_SERVERS;
+
+            if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+                perror("socket failed");
+            }
+            //todo: make connection timeout after 1 second
+            if (connect(sock_fd, (struct sockaddr *) server_addrs + i, sizeof(server_addrs[i])) < 0){
+                perror("connect failed");
+            }
+            
+            //todo: send initial request, get ok back, send appropriate chunks according to partition strategy
+            //send first chunk
+            //send second chunk
+
+            close(sock_fd);
+        }
+        //todo: delete local files
     }
 }
 //practice: write put request multi thread routine (one thread for each server)
