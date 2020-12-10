@@ -6,23 +6,24 @@
 //todo: import standard io, networking, and multithreading libraries
 
 //todo: write thread to serve get request
-    //todo: parse for file name
-    //todo ec: report what chunks of file are here
+void get(int sock_fd, char * buf, char * username, char * filename){
+    //todo ec: report what chunks of file are here, wait for requests
     //todo: send back chunks, use 1028 byte segments labelled with chunk # (1 byte)
         //todo: ec: wait for requests for chunks
     //todo: send back transmission complete byte (invalid chunk #, 5 in this case)
+}
 
-//todo: write thread to serve put request
-    //todo: parse for file name
+void put(int sock_fd, char * buf, char * username, char * filename){
     //todo: receive chunks, use 1028 byte segments labelled with chunk #
         //todo: if new chunk, construct chunk file name with '.' prefix and '.#' suffix
         //todo: receive transmission complete byte to break out of loop, or wait for socket timeout
+}
 
-//todo: write thread to serve list request
+void list(int sock_fd, char * buf, char * username){
     //todo: use ls command with syscall
     //todo: report back file names with chunk #'s format: filename/##filename/##filename/## (numbers are single bytes, no delimiter)
     // send / in lieu of filename to mark the end of transmission
-
+}
 
 //todo: write main thread routine to serve all requests
 void serve(void * connection){
@@ -49,13 +50,13 @@ void serve(void * connection){
     else{
         //todo: call appropriate handler, passing request details
         if (!strncmp(command, "put", 3)){
-            
+            get(sock_fd, buf, username, filename);
         }
         else if (!strncmp(command, "get", 3)){
-            
+            putt(sock_fd, buf, username, filename);
         }
         else if (!strncmp(command, "list", 4)){   
-
+            list(sock_fd, buf, username);
         }
     }
     
