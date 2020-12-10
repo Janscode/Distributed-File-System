@@ -8,7 +8,7 @@
 void put(char * filename, char * username, char * password, struct sockaddr_in server_addrs[NUM_SERVERS]){
     FILE * fd;
     fd = fopen(filename, "r");
-    if (fd < 0){
+    if (fd == NULL){
         printf("File not found!\n");
     } 
     else{
@@ -65,7 +65,7 @@ int main(int argc, char ** argv){
         numargs = sscanf(input, "%s %s %s", command, filename, filename);
         if (!strncmp(command, "put", 3)){
             if (numargs == 2){
-                printf("put request for %s\n", filename);
+                put(filename, username, password, server_addrs);
             }
             else if (numargs == 1){
                 printf("put requires an additional argument\n");
