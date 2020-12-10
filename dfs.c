@@ -53,7 +53,7 @@ void serve(void * connection){
             get(sock_fd, buf, username, filename);
         }
         else if (!strncmp(command, "get", 3)){
-            putt(sock_fd, buf, username, filename);
+            put(sock_fd, buf, username, filename);
         }
         else if (!strncmp(command, "list", 4)){   
             list(sock_fd, buf, username);
