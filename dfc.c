@@ -1,8 +1,13 @@
 #include <stdio.h>
 #include <string.h>
+#include <arpa/inet.h>
+#define NUM_SERVERS 4 //todo: make this work for variable number of servers
 //todo: import standard io, networking, (maybe) multithreading, and hashing
 
 //todo: write put request
+void put(char * filename, char * username, char * password, struct sockaddr_in server_addrs[NUM_SERVERS]){
+    
+}
     //todo: write put request main thread
         //todo: read file in chunks
             //todo: error if the file isn't found
@@ -33,6 +38,9 @@
     //practice: write list request multi thread routine
 
 int main(int argc, char ** argv){
+    struct sockaddr_in server_addrs[NUM_SERVERS];
+    char username[45];
+    char password[45];
     //todo: read dfc.config
         //todo: store server information / build address structs
         //todo: store username / password info or request it if it doesn't exist
