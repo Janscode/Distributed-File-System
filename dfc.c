@@ -32,8 +32,8 @@ void put(char * filename, char * username, char * password, struct sockaddr_in s
         }   
         MD5_Final(digest, &mdcontext);
         hash = (*(long long int *)digest) % NUM_SERVERS;
-
         chunksize = (filesize - (filesize %  NUM_SERVERS))/ NUM_SERVERS;
+        fseek(source_fd, 0, SEEK_SET); //seek to start of file
         strcpy(chunkname+1,filename);
         chunkname[0] = '.';
         chunkname[strlen(filename) + 1] = '.';
@@ -68,7 +68,34 @@ void put(char * filename, char * username, char * password, struct sockaddr_in s
 }
 //practice: write put request multi thread routine (one thread for each server)
 
-//todo: write get request
+void get(char * filename, char * username, char * password, struct sockaddr_in server_addrs[NUM_SERVERS]){
+    FILE * chunk_fd;
+    FILE * dest_fd;
+    int bytes;
+    char buf[1028];
+    char chunkname[43];
+
+    dest_fd = fopen(filename, "w");
+    strcpy(chunkname+1,filename);
+    chunkname[0] = '.';
+    chunkname[strlen(filename) + 1] = '.';
+    chunkname[strlen(filename) + 3] = '\0';
+    for (int i = 1; i <=  NUM_SERVERS; i++){
+        chunkname[strlen(filename) + 2] = i + '0';
+        printf("%s\n",chunkname);
+        chunk_fd = fopen(chunkname, "r");
+        if (chunk_fd == 0){
+            printf("here\n");
+        }
+        printf("hnnere\n");
+        while((bytes = fread(buf, sizeof(char), 1028, chunk_fd))){
+            printf("%d\n", bytes);
+            fwrite(buf, sizeof(char), bytes, dest_fd);
+        }
+        fclose(chunk_fd);
+    }
+    fclose(dest_fd);
+}
     //todo: write get request main thread
          //todo: for each server, intiate connection, get ok back
             //ec: check if the chunks are still needed, request if they are
@@ -120,7 +147,7 @@ int main(int argc, char ** argv){
         }
         else if (!strncmp(command, "get", 3)){
             if (numargs == 2){
-                printf("get request for %s\n", filename);
+                get(filename, username, password, server_addrs);
             }
             else if (numargs == 1){
                 printf("get requires an additional argument\n");
