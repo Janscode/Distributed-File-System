@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <string.h>
 //todo: import standard io, networking, (maybe) multithreading, and hashing
 
 //todo: write put request
@@ -30,9 +32,58 @@
         //todo: read through linked list to print available files
     //practice: write list request multi thread routine
 
-//todo: write main
+int main(int argc, char ** argv){
     //todo: read dfc.config
         //todo: store server information / build address structs
         //todo: store username / password info or request it if it doesn't exist
-    //todo: main input loop
-        //todo: parse request kind and call appropriate function
+
+    /* parse input and call corresponding function
+        input stores entire line
+        command stores the first word
+        filename stores the second word
+        numargs stores number of words
+    */
+    char input[45];
+    char command[4];
+    char filename[40];
+    int numargs;
+
+    while(1){
+        fgets(input, 45, stdin); //todo: test if input was longer than buffer
+        numargs = sscanf(input, "%s %s %s", command, filename, filename);
+        if (!strncmp(command, "get", 3)){
+            if (numargs == 2){
+                printf("get request for %s\n", filename);
+            }
+            else if (numargs == 1){
+                printf("get requires an additional argument\n");
+            }
+            else{
+                printf("get only takes one argument\n");  
+            }        
+        }
+        else if (!strncmp(command, "put", 3)){
+            if (numargs == 2){
+                printf("put request for %s\n", filename);
+            }
+            else if (numargs == 1){
+                printf("put requires an additional argument\n");
+            }
+            else{
+                printf("put only takes one argument\n");  
+            } 
+        }
+        else if (!strncmp(command, "list", 4)){
+            if (numargs == 1){
+               printf("list request\n");
+            }
+            else{
+                printf("list does not take any arguments\n");
+            }
+        }
+        else{
+            printf("%s : unknown command\n", command);
+        }
+    }
+        //todo: call appropriate functions
+}
