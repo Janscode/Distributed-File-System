@@ -8,14 +8,21 @@
 void put(char * filename, char * username, char * password, struct sockaddr_in server_addrs[NUM_SERVERS]){
     FILE * fd;
     fd = fopen(filename, "r");
+    /*error if the file isn't found*/
     if (fd == NULL){
         printf("File not found!\n");
     } 
     else{
-        //todo: read file in chunks
-            //todo: error if the file isn't found
+        /* read file in chunks  */
+        int bytes, filesize;
+        char buf[1028];
+        filesize = 0;
+        while(bytes = fread(buf, sizeof(char), 1028, fd)){
+            /* progressivley count file length */
+            filesize += bytes;
             //todo: progressivley update state of md5 object
-            //todo: progressivley count file length
+        }   
+           
         //todo: compute md5 hash, figure out partition strategy
         //todo: save each chunk of the file locally ec: encrypt chunks with simple encryption (xor password for now)
         //todo: for each server, intiate connection, get ok back, send appropriate chunks according to partition strategy
