@@ -63,18 +63,7 @@ int main(int argc, char ** argv){
     while(1){
         fgets(input, 45, stdin); //todo: test if input was longer than buffer
         numargs = sscanf(input, "%s %s %s", command, filename, filename);
-        if (!strncmp(command, "get", 3)){
-            if (numargs == 2){
-                printf("get request for %s\n", filename);
-            }
-            else if (numargs == 1){
-                printf("get requires an additional argument\n");
-            }
-            else{
-                printf("get only takes one argument\n");  
-            }        
-        }
-        else if (!strncmp(command, "put", 3)){
+        if (!strncmp(command, "put", 3)){
             if (numargs == 2){
                 printf("put request for %s\n", filename);
             }
@@ -84,6 +73,17 @@ int main(int argc, char ** argv){
             else{
                 printf("put only takes one argument\n");  
             } 
+        }
+        else if (!strncmp(command, "get", 3)){
+            if (numargs == 2){
+                printf("get request for %s\n", filename);
+            }
+            else if (numargs == 1){
+                printf("get requires an additional argument\n");
+            }
+            else{
+                printf("get only takes one argument\n");  
+            }        
         }
         else if (!strncmp(command, "list", 4)){
             if (numargs == 1){
