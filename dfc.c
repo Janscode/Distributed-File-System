@@ -1,22 +1,27 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <openssl/md5.h>
 #define NUM_SERVERS 4 //practice: make this work for variable number of servers
 //todo: import standard io, networking, (maybe) multithreading, and hashing
 
 //todo: write put request
 void put(char * filename, char * username, char * password, struct sockaddr_in server_addrs[NUM_SERVERS]){
     FILE * fd;
+    unsigned char digest[MD5_DIGEST_LENGTH];
+    char buf[1028];
+    MD5_CTX mdContext;
+    int bytes, filesize;
+    
+    filesize = 0;
     fd = fopen(filename, "r");
     /*error if the file isn't found*/
     if (fd == NULL){
         printf("File not found!\n");
     } 
     else{
+        
         /* read file in chunks  */
-        int bytes, filesize;
-        char buf[1028];
-        filesize = 0;
         while((bytes = fread(buf, sizeof(char), 1028, fd))){
             /* progressivley count file length */
             filesize += bytes;
