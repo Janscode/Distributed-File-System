@@ -7,35 +7,63 @@
 
 //todo: write put request
 void put(char * filename, char * username, char * password, struct sockaddr_in server_addrs[NUM_SERVERS]){
-    FILE * fd;
+    FILE * source_fd;
+    FILE * chunk_fd;
     unsigned char digest[MD5_DIGEST_LENGTH];
+    char chunkname[43];
     char buf[1028];
     MD5_CTX mdcontext;
-    int bytes, filesize, hash;
+    int bytes, bytes_left, filesize, chunksize, hash;
     
     filesize = 0;
-    fd = fopen(filename, "r");
+    source_fd = fopen(filename, "r");
     /*error if the file isn't found*/
-    if (fd == NULL){
+    if (source_fd == NULL){
         printf("File not found!\n");
     } 
     else{
         /* read file in chunks  */
         MD5_Init(&mdcontext);
-        while((bytes = fread(buf, sizeof(char), 1028, fd))){
+        while((bytes = fread(buf, sizeof(char), 1028, source_fd))){
             /* progressivley count file length */
             filesize += bytes;
             MD5_Update(&mdcontext, buf, bytes);
             //todo: progressivley update state of md5 object
         }   
         MD5_Final(digest, &mdcontext);
-        hash = (*(long long int *)digest) % 4;
+        hash = (*(long long int *)digest) % NUM_SERVERS;
 
-        
+        chunksize = (filesize - (filesize %  NUM_SERVERS))/ NUM_SERVERS;
+        strcpy(chunkname+1,filename);
+        chunkname[0] = '.';
+        chunkname[strlen(filename) + 1] = '.';
+        for (int i = 1; i <=  NUM_SERVERS; i++){
+            chunkname[strlen(filename) + 2] = i + '0';
+            printf("%s\n",chunkname);
+            chunk_fd = fopen(chunkname, "w");
+            bytes_left = chunksize;
+            if (i ==  NUM_SERVERS){
+                bytes_left += filesize %  NUM_SERVERS;
+            }
+            while(bytes_left){
+                if (bytes_left < 1028){
+                    fread(buf, sizeof(char), bytes_left, source_fd);
+                    fwrite(buf, sizeof(char), bytes_left, chunk_fd);
+                    bytes_left = 0;
+                }
+                else{
+                    fread(buf, sizeof(char), 1028, source_fd);
+                    fwrite(buf, sizeof(char), 1028, chunk_fd);
+                    bytes_left -= 1028;
+                }
+            }
+            fclose(chunk_fd);
+        }
         //todo: compute md5 hash, figure out partition strategy
-        //todo: save each chunk of the file locally ec: encrypt chunks with simple encryption (xor password for now)
+        //ec: encrypt chunks with simple encryption (xor password for now)
         //todo: for each server, intiate connection, get ok back, send appropriate chunks according to partition strategy
         //todo: delete local files
+        fclose(source_fd);
     }
 }
 //practice: write put request multi thread routine (one thread for each server)
