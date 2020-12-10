@@ -29,7 +29,8 @@ void put(char * filename, char * username, char * password, struct sockaddr_in s
             //todo: progressivley update state of md5 object
         }   
         MD5_Final(digest, &mdcontext);
-        for(int i = 0; i < MD5_DIGEST_LENGTH; i++) printf("%02x", digest[i]);
+        hash = (*(long long int *)digest) % 4;
+
         
         //todo: compute md5 hash, figure out partition strategy
         //todo: save each chunk of the file locally ec: encrypt chunks with simple encryption (xor password for now)
