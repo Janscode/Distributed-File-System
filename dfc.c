@@ -10,8 +10,8 @@ void put(char * filename, char * username, char * password, struct sockaddr_in s
     FILE * fd;
     unsigned char digest[MD5_DIGEST_LENGTH];
     char buf[1028];
-    MD5_CTX mdContext;
-    int bytes, filesize;
+    MD5_CTX mdcontext;
+    int bytes, filesize, hash;
     
     filesize = 0;
     fd = fopen(filename, "r");
@@ -20,13 +20,16 @@ void put(char * filename, char * username, char * password, struct sockaddr_in s
         printf("File not found!\n");
     } 
     else{
-        
         /* read file in chunks  */
+        MD5_Init(&mdcontext);
         while((bytes = fread(buf, sizeof(char), 1028, fd))){
             /* progressivley count file length */
             filesize += bytes;
+            MD5_Update(&mdcontext, buf, bytes);
             //todo: progressivley update state of md5 object
         }   
+        MD5_Final(digest, &mdcontext);
+        for(int i = 0; i < MD5_DIGEST_LENGTH; i++) printf("%02x", digest[i]);
         
         //todo: compute md5 hash, figure out partition strategy
         //todo: save each chunk of the file locally ec: encrypt chunks with simple encryption (xor password for now)
