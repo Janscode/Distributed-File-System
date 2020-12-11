@@ -179,6 +179,13 @@ void put(int sock_fd, char * buf, char * username, char * filename){
 }
 
 void list(int sock_fd, char * buf, char * username){
+    //get ready byte
+    int filecounter;
+
+    filecounter = 0;
+    if (recv(sock_fd, buf, 1, 0) < 0){
+        printf("recv failed recieving ready byte");
+    }
     DIR *d;
     char path [128];
     snprintf(path, 128, "%s%s", dir, username);
@@ -187,6 +194,24 @@ void list(int sock_fd, char * buf, char * username){
     if (d) {
         while ((dir = readdir(d)) != NULL) {
             printf("%s\n", dir->d_name);
+            filecounter++;
+            printf("%d\n", filecounter);
+            
+            if (filecounter > 2){
+                if (send(sock_fd, dir->d_name, strlen(dir->d_name), 0) < 0){
+                    perror("send failed on chunk info");
+                }
+                if (recv(sock_fd, buf, 1028, 0) < 0){
+                    printf("recv failed recieving confirmation byte");
+                }
+            }
+            
+        }
+        //send done message
+        buf[0] = 'd';
+        if (send(sock_fd, buf, 1, 0) < 0){
+            perror("send failed on done message");
+        
         }
         closedir(d);
     }

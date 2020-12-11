@@ -19,18 +19,28 @@ struct filenode{
 
 /* search the list for the file, create if it doesn't exist, and mark the appropriate chunk*/
 void file_list_add(struct filenode ** node, char * filename, int chunknum){
+    printf("here\n");
     int exists = 0;
-    while(*node == NULL){
+    while(*node != NULL){
+        printf("here2\n");
         if (!strcmp((*node)->filename, filename)){
+            printf("here3\n");
             (*node)->chunksreceived[chunknum - 1] = 1;
             exists = 1;
         }
+        printf("here4\n");
         node = &((*node)->next);
+        printf("here5\n");
     }
+    printf("here6\n");
     if (!exists){
+        printf("here7\n");
         *node = malloc(sizeof(struct filenode));
+        printf("here8\n");
         strcpy((*node)->filename, filename);
+        printf("here9\n");
         (*node)->chunksreceived[chunknum - 1] = 1;
+        printf("here10\n");
     }
 }
 
@@ -38,11 +48,11 @@ void file_list_add(struct filenode ** node, char * filename, int chunknum){
 void file_list_consume(struct filenode * node){
     struct filenode * lastnode;
     while (node != NULL){
-        if (node->chunksreceived[0] || node->chunksreceived[1] || node->chunksreceived[2] || node->chunksreceived[3]){
-            printf("%s", node->filename);
+        if (node->chunksreceived[0] && node->chunksreceived[1] && node->chunksreceived[2] && node->chunksreceived[3]){
+            printf("%s\n", node->filename);
         }
         else{
-            printf("%s [incomplete]", node->filename);
+            printf("%s [incomplete]\n", node->filename);
         }
         lastnode = node;
         node = node->next;
@@ -331,7 +341,11 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
 void list (char * username, char * password, struct sockaddr_in * server_addrs[NUM_SERVERS]){
     int sock_fd, bytes;
     char buf[1028];
-    int chunk;
+    int chunknum;
+    struct filenode * filelist;
+
+    filelist = NULL;
+    //initialize linked list
     for (int i = 0; i < NUM_SERVERS; i++){
         if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
             perror("socket failed");
@@ -359,7 +373,27 @@ void list (char * username, char * password, struct sockaddr_in * server_addrs[N
                 if (send(sock_fd, buf, 1, 0) < 0){
                     perror("send failed on ready byte");
                 }
-                printf("Sent ready byte %d.\n", buf[0]);   
+                printf("Sent ready byte %c.\n", buf[0]);
+                while(1){
+                    if ((bytes = recv(sock_fd, buf, 1028, 0)) < 0){
+                        perror("recv failed getting chunk info");
+                    }
+
+                    printf("%s\n", buf); //todo: check if the transmission is done, add to linked list
+                    if (buf[0] == 'd'){
+                        break;
+                    }
+                    buf[bytes - 2] = '\0';
+                    printf("%s\n", buf); //todo: check if the transmission is done, add to linked lis
+                    buf[bytes] = '\0';
+                    printf("%s\n", buf); //todo: check if the transmission is done, add to linked lis
+                    sscanf(buf + bytes - 1, "%d", &chunknum);
+                    printf("%d\n", chunknum); 
+                    file_list_add(&filelist, buf, chunknum);
+                    if (send(sock_fd, buf, 1, 0) < 0){
+                        perror("send failed on confirmation byte");
+                    }
+                }   
             }
             else if (!strcmp(buf, "Invalid Username/Password. Please try again.")){
                 printf("Invalid Username/Password. Please try again.\n"); //todo: only print this once and exit
@@ -367,9 +401,11 @@ void list (char * username, char * password, struct sockaddr_in * server_addrs[N
             else{
                 printf("Something is wrong with server %d\n", i + 1);
             }
-        }                
+        }
+        //todo: consume linked list                
         close(sock_fd);
     }
+    file_list_consume(filelist);
 }
     //todo: write list request main thread
         //todo: for each server, initiate connection
