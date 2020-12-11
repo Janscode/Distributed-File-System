@@ -10,6 +10,8 @@ char * dir;
 char * config;
 //todo: write thread to serve get request
 void get(int sock_fd, char * buf, char * username, char * filename){
+    char chunkname[150];
+    snprintf(chunkname, sizeof(chunkname), "%s%s/.%s.#", dir, username, filename); //practice: construct chunkname more intelligently
     //todo ec: report what chunks of file are here, wait for requests
     //todo: send back chunks, use 1028 byte segments labelled with chunk # (1 byte)
         //todo: ec: wait for requests for chunks
@@ -17,6 +19,8 @@ void get(int sock_fd, char * buf, char * username, char * filename){
 }
 
 void put(int sock_fd, char * buf, char * username, char * filename){
+    char chunkname[150];
+    snprintf(chunkname, sizeof(chunkname), "%s%s/.%s.#", dir, username, filename); //practice: construct chunkname more intelligently
     //todo: receive chunks, use 1028 byte segments labelled with chunk #
         //todo: if new chunk, construct chunk file name with '.' prefix and '.#' suffix
         //todo: receive transmission complete byte to break out of loop, or wait for socket timeout
