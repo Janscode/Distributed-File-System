@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netdb.h> 
+#include <dirent.h>
 //todo: import standard io, networking, and multithreading libraries
 char * dir;
 //practice: use named semaphores to lock off user directories to prevent race conditions
@@ -53,7 +54,7 @@ void get(int sock_fd, char * buf, char * username, char * filename){
     //todo: receive ready byte
     printf("receive ready byte\n");
     if (recv(sock_fd, buf, 1027, 0) < 0){
-        perror("recv failed getting done byte for chunk");
+        perror("recv failed getting ready byte for chunk");
     }
     for (int i = 1; i < 5; i ++){
         chunkname[namesize - 1] = i + '0';
@@ -178,6 +179,18 @@ void put(int sock_fd, char * buf, char * username, char * filename){
 }
 
 void list(int sock_fd, char * buf, char * username){
+    DIR *d;
+    char path [128];
+    snprintf(path, 128, "%s%s", dir, username);
+    struct dirent *dir;
+    d = opendir(path);
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+            printf("%s\n", dir->d_name);
+        }
+        closedir(d);
+    }
+    /* consulted https://stackoverflow.com/questions/4204666/how-to-list-files-in-a-directory-in-a-c-program/17683417  to figure out how to do this*/
     //todo: use ls command with syscall
     //todo: report back file names with chunk #'s format: filename/##filename/##filename/## (numbers are single bytes, no delimiter)
     // send / in lieu of filename to mark the end of transmission
