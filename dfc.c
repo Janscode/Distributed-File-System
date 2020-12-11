@@ -48,7 +48,6 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
         chunkname[strlen(filename) + 3] = '\0';
         for (int i = 1; i <=  NUM_SERVERS; i++){
             chunkname[strlen(filename) + 2] = i + '0';
-            printf("%s\n",chunkname);
             chunk_fd = fopen(chunkname, "w");
             bytes_left = chunksize;
             if (i ==  NUM_SERVERS){
@@ -81,8 +80,6 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
                 perror("socket failed");
             }
             //todo: make connection timeout after 1 second
-            printf("%d\n", i);
-
             if (connect(sock_fd, (struct sockaddr *) server_addrs[i], sizeof(*server_addrs[i])) < 0){
                 perror("connect failed");
             }
@@ -103,16 +100,13 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
                     if (send(sock_fd, buf, bytes, 0) < 0){
                         perror("send failed for chunk #s");
                     }
-                    printf("1\n");
                     //build chunk 1 name
                     chunkname[strlen(filename) + 2] = partitions[partition][0] + '0';
                     chunk_fd = fopen(chunkname, "r");
-                    printf("2\n");
                     //receive confirmation
                     if (recv(sock_fd, buf, 1028, 0) < 0){
                         perror("recv failed getting request for chunk 1");
                     }
-                    printf("3\n");
                     //send content
                     buf[0] = 'c';
                     while ((bytes = fread(buf + 1, sizeof(char), 1027, chunk_fd)) > 0){
@@ -130,21 +124,17 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
                             perror("send failed on end of chunk 1");
                         }
                     }
-                    printf("4\n");
                     fclose(chunk_fd);
                     //build chunk 2 name
                     chunkname[strlen(filename) + 2] = partitions[partition][1] + '0';
                     chunk_fd = fopen(chunkname, "r");
                     //receive confirmation
-                    printf("5\n");
                     if (recv(sock_fd, buf, 1027, 0) < 0){
                         perror("recv failed getting request for chunk 2");
                     }
-                    printf("6\n");
                     //send content
                     buf[0] = 'c';
                     while ((bytes = fread(buf + 1, sizeof(char), 1027, chunk_fd)) > 0){
-                        printf("%s\n", buf);
                         if (bytes < 1027){
                             buf[0] = 'd'; //if this is the last transmission, let the server know
                         }
@@ -159,8 +149,6 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
                             perror("send failed on end of chunk 2");
                     }
                     }
-                    
-                    printf("7\n");
                     fclose(chunk_fd);
                 }
                 else if (!strcmp(buf, "Invalid Username/Password. Please try again.")){
@@ -180,15 +168,104 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
 void get(char * filename, char * username, char * password, struct sockaddr_in * server_addrs[NUM_SERVERS]){
     FILE * chunk_fd;
     FILE * dest_fd;
-    int bytes;
+    int bytes, sock_fd;
     char buf[1028];
     char chunkname[43];
 
-    dest_fd = fopen(filename, "w");
+    //build chunkname template
     strcpy(chunkname+1,filename);
     chunkname[0] = '.';
     chunkname[strlen(filename) + 1] = '.';
     chunkname[strlen(filename) + 3] = '\0';
+    
+    /*contact each server and download the neccesary chunks*/
+    for (int i = 0; i < NUM_SERVERS; i++){
+        if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+            perror("socket failed");
+        }
+        //todo: make connection timeout after 1 second
+        //make initial connection
+        printf("Contacting server %d.\n", i);
+        if (connect(sock_fd, (struct sockaddr *) server_addrs[i], sizeof(*server_addrs[i])) < 0){
+            perror("connect failed");
+        }
+        else{
+            //send initial request with authentication credentials
+            bytes = snprintf(buf, 1028, "%s %s get %s", username, password, filename); //practice: look into if this is the right way, make sure this is safe
+            if (send(sock_fd, buf, bytes, 0) < 0){
+                perror("send failed");
+            };
+            //receive authentication response
+            if ((bytes = recv(sock_fd, buf, 1028, 0)) < 0){
+                perror("error on recv initial response");
+            }
+            printf("Got initial response %s.\n", buf);
+            //check that credentials where correct
+            if (!strncmp(buf, "ok", 2)){
+                //send ready byte
+                if (send(sock_fd, buf, 1, 0) < 0){
+                    perror("send failed on ready byte");
+                }
+                printf("Sent ready byte %d.\n", buf[0]);
+                while(1){
+                     //get chunk #
+                    if (recv(sock_fd, buf, 1027, 0) < 0){
+                        perror("recv failed getting chunk #");
+                    }
+                    printf("Got back byte %c.\n", buf[0]);
+                    //if instead of a chunk number there is a 'd', there are no more chunks on the server
+                    if (buf[0] == 'd'){
+                        break;
+                    }
+                    else{
+                        chunkname[strlen(filename) + 2] = buf[0];
+                        chunk_fd = fopen(chunkname, "r");
+                        if (chunk_fd != NULL){
+                        //if chunk is already here, let server know
+                            fclose(chunk_fd);
+                            buf[0] = 'd';
+                            if (send(sock_fd, buf, 1, 0) < 0){
+                                perror("send failed rejecting chunk");
+                            }
+                        }
+                        else{
+                            //if the chunk is not already saved, request it
+                            buf[0] = 'c';
+                            if (send(sock_fd, buf, 1, 0) < 0){
+                                perror("send failed requesting chunk");
+                            }
+                            chunk_fd = fopen(chunkname, "w");
+                            //download the chunk
+                            bzero(buf, 1028);
+                            while((bytes = recv(sock_fd, buf, 1028, 0)) > 0){
+                                printf("%s\n", buf);
+                                //use first byte as transmission over message
+                                fwrite(buf + 1, sizeof(char), bytes - 1, chunk_fd);
+                                if (buf[0] == 'd'){
+                                    break;
+                                }
+                                bzero(buf, 1028);
+                            }
+                            buf[0] = 'd';
+                            if (send(sock_fd, buf, 1, 0) < 0){
+                                perror("send failed on finished byte");
+                            }
+                            fclose(chunk_fd);
+                        }
+                    }
+                }         
+            }
+            else if (!strcmp(buf, "Invalid Username/Password. Please try again.")){
+                printf("Invalid Username/Password. Please try again.\n"); //todo: only print this once and exit
+            }
+            else{
+                printf("Something is wrong with server %d\n", i + 1);
+            }
+        }                
+        close(sock_fd);
+    }
+
+    dest_fd = fopen(filename, "w");
     for (int i = 1; i <=  NUM_SERVERS; i++){
         chunkname[strlen(filename) + 2] = i + '0';
         printf("%s\n",chunkname);
@@ -206,9 +283,7 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
     fclose(dest_fd);
 }
     //todo: write get request main thread
-         //todo: for each server, intiate connection, get ok back
-            //ec: check if the chunks are still needed, request if they are
-            //todo: save server chunks locally
+         
         //todo: reassemble chunks into main file ec: decrypt chunks
         //todo: delete local files
 

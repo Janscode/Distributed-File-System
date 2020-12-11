@@ -46,16 +46,67 @@ int checkcreds(char * candidate_username, char* candidate_password){
 
 void get(int sock_fd, char * buf, char * username, char * filename){
     char chunkname[150];
-    snprintf(chunkname, sizeof(chunkname), "%s%s/.%s.#", dir, username, filename); //practice: construct chunkname more intelligently
-    //todo ec: report what chunks of file are here, wait for requests
-    
-    //todo: respond to each chunk request
-        //todo: receive chunk #
-        //todo: build name
-        //todo: open file
-        //send chunk
-        //todo: close file
-    //practice: make all sockets able to timeout after a while
+    int namesize, bytes;
+    FILE * chunk_fd;
+    //build chunk name template
+    namesize = snprintf(chunkname, sizeof(chunkname), "%s%s/.%s.#", dir, username, filename); //practice: construct chunkname more intelligently
+    //todo: receive ready byte
+    printf("receive ready byte\n");
+    if (recv(sock_fd, buf, 1027, 0) < 0){
+        perror("recv failed getting done byte for chunk");
+    }
+    for (int i = 1; i < 5; i ++){
+        chunkname[namesize - 1] = i + '0';
+        
+        printf("trying %s\n", chunkname);
+        chunk_fd = fopen(chunkname, "r");
+        if (chunk_fd != NULL){
+            //send file number
+            printf("\n");
+            if (send(sock_fd, chunkname + namesize - 1, 1, 0) < 0){
+                perror("send failed advertising chunk");
+            }
+            printf("sending %c\n", chunkname[namesize - 1]);
+            //receive response byte: c for continue, d to go on to next file
+            printf("/receive response byte: c for continue, d to go on to next file\n");
+            if (recv(sock_fd, buf, 1027, 0) < 0){
+                perror("recv failed getting response for chunk");
+            }
+            printf("got back %c\n", buf[0]);
+            if (buf[0] == 'c'){
+                //send file back in chunks
+                printf("send file back in chunks\n");
+                while ((bytes = fread(buf + 1, sizeof(char), 1027, chunk_fd)) > 0){
+                    printf("%s\n", buf);
+                    if (bytes < 1027){
+                        buf[0] = 'd'; //if this is the last transmission, let the server know
+                    }
+                    if (send(sock_fd, buf, bytes+1, 0) < 0){
+                        perror("send failed sending chunk 2");
+                    }
+                }
+                if (bytes == 1027){
+                    //incase the last transmission perfectly filled the buffer, send the end signal
+                    buf[0] = 'd';
+                    if (send(sock_fd, buf, 1, 0) < 0){
+                        perror("send failed on end of chunk 2");
+                    }
+                }
+                //get confirmation before moving on to next file / sending more data
+                printf("get confirmation before moving on to next file / sending more data\n");
+                if (recv(sock_fd, buf, 1027, 0) < 0){
+                    perror("recv failed getting done byte for chunk");
+                }
+            }
+            fclose(chunk_fd);
+        }
+    }
+    //send 'd' byte rather than file number to indicate transmission is over
+    printf("send 'd' byte rather than file number to indicate transmission is over\n");
+    buf[0] = 'd';
+    if (send(sock_fd, buf, 1, 0) < 0){
+        perror("send failed on end of chunk 2");
+    }
 }
 
 void put(int sock_fd, char * buf, char * username, char * filename){
