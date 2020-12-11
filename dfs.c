@@ -5,25 +5,69 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netdb.h> 
 //todo: import standard io, networking, and multithreading libraries
 char * dir;
-char * config = "dfs.config";
-//todo: write thread to serve get request
+//practice: use named semaphores to lock off user directories to prevent race conditions
+
+void checkdir(char * username){ //todo: check if username directory exists, if it doesn't, create it
+    
+}
+
+int checkcreds(char * candidate_username, char* candidate_password){
+    FILE * config_fd;
+    char line[128]; //practice: handle longer lines / make sure config file is properly formated
+    char username[45];
+    char password[45];
+    config_fd = fopen("dfs.config", "r");
+    int authenticated = 0;
+    
+    if (config_fd < 0){
+        perror("fopen failed on config");
+    }
+    else{
+        while(fgets(line, 128, config_fd) != NULL){
+            sscanf(line, "%s %s", username, password);
+            if (!strcmp(username, candidate_username)){
+                checkdir(username);
+                if (!strcmp(password, candidate_password)){
+                    authenticated = 1;
+                    break;
+                }
+            }
+        }
+        fclose(config_fd);
+    }
+    return authenticated;
+}
+
 void get(int sock_fd, char * buf, char * username, char * filename){
     char chunkname[150];
     snprintf(chunkname, sizeof(chunkname), "%s%s/.%s.#", dir, username, filename); //practice: construct chunkname more intelligently
     //todo ec: report what chunks of file are here, wait for requests
-    //todo: send back chunks, use 1028 byte segments labelled with chunk # (1 byte)
-        //todo: ec: wait for requests for chunks
-    //todo: send back transmission complete byte (invalid chunk #, 5 in this case)
+    
+    //todo: respond to each chunk request
+        //todo: receive chunk #
+        //todo: build name
+        //todo: open file
+        //send chunk
+        //todo: close file
+    //practice: make all sockets able to timeout after a while
 }
 
 void put(int sock_fd, char * buf, char * username, char * filename){
     char chunkname[150];
     snprintf(chunkname, sizeof(chunkname), "%s%s/.%s.#", dir, username, filename); //practice: construct chunkname more intelligently
-    //todo: receive chunks, use 1028 byte segments labelled with chunk #
-        //todo: if new chunk, construct chunk file name with '.' prefix and '.#' suffix
-        //todo: receive transmission complete byte to break out of loop, or wait for socket timeout
+    //todo: receive chunk #s
+    //todo: request each chunk
+        //todo: build name
+        //todo: open file
+        //todo: send chunk #
+        //todo: close file
+    //practice: make all sockets able to timeout after a while
 }
 
 void list(int sock_fd, char * buf, char * username){
@@ -42,30 +86,38 @@ void * serve(void * connection){
     char password[45];
     char command[4];
     char filename[40];
-    
+    char * inval_cred_message = "Invalid Username/Password. Please try again.";
+    char * ok_message = "ok";
+    //receive request  
     bytes = recv(sock_fd, buf, 1028, 0); //practice: limit bytes read so that the string won't overflow the buffers
     if (bytes < 0){
         perror("recv failed");
     }
     //parse socket stream for request type, username, password
     sscanf(buf, "%s %s %s %s", username, password, command, filename); //practice: deal with filenames with spaces
-    if (0){
-        //todo: check username and password
-            //todo: if username is valid but no folder exists, create folder
-            //todo: if username is invalid, send back error signal
+    if (checkcreds(username, password) == 0){
+        //send invalid credential message
+        if (send(sock_fd, inval_cred_message, sizeof(inval_cred_message), 0) < 0){
+            perror("send failed on invalid credential message");
+        }
     }
     else{
-        //todo: call appropriate handler, passing request details
+        //send ok message
+        if (send(sock_fd, ok_message, sizeof(ok_message), 0) < 0){
+            perror("send failed on ok message");
+        }
+        //call appropriate handler, passing details
         if (!strncmp(command, "put", 3)){
-            get(sock_fd, buf, username, filename);
+            put(sock_fd, buf, username, filename);
         }
         else if (!strncmp(command, "get", 3)){
-            put(sock_fd, buf, username, filename);
+            get(sock_fd, buf, username, filename);
         }
         else if (!strncmp(command, "list", 4)){   
             list(sock_fd, buf, username);
         }
     }
+    close(sock_fd);
     return NULL;
 }
 
@@ -84,7 +136,7 @@ int main(int argc, char ** argv){
         printf("Usage: dfs <dir> <config>\n");
         exit(1);
     }
-    dir = argv[1];
+    dir = argv[1]; //practice: if dir does not end with /, append it
     portno = atoi(argv[2]);
     //create socket
     if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0){
@@ -114,6 +166,7 @@ int main(int argc, char ** argv){
             perror("select failed");
         }
         else if (ready){
+            printf("1\n");
             connection = malloc(sizeof(int));
             if ((*connection = accept(sock_fd,(struct sockaddr *) &server_addr, (socklen_t *)&addr_len)) < 0){
                 perror("accept failed");
