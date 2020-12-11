@@ -80,7 +80,6 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
                 perror("socket failed");
             }
             //todo: make connection timeout after 1 second
-            printf("%d\n", i);
             if (connect(sock_fd, (struct sockaddr *) server_addrs[i], sizeof(*server_addrs[i])) < 0){
                 perror("connect failed");
             }
@@ -165,27 +164,20 @@ int main(int argc, char ** argv){
         exit(1);
     }
     config_fd = fopen(argv[1], "r");
+    //parse file and build addresses
     for (int i = 0; i < NUM_SERVERS; i++){ //practice: recognize which lines are servers and which are username/password
         fgets(line, 128, config_fd);
         sscanf(line, "%*s %*s %s", line);
         sscanf(line, "%[^':']:%s", ip, port);
         sscanf(line, "%[^':']:%*s", ip);
         printf("ip%s port%s\n", ip, port);
-
         
         bzero((char *) server_addrs[i], sizeof(*server_addrs[i]));
         server_addrs[i]->sin_family = AF_INET;
         server = gethostbyname("127.0.0.1"); //todo: fix this
-        portno = atoi(port);
         bcopy((char *)server->h_addr, (char *)&(server_addrs[i]->sin_addr.s_addr), server->h_length);
-        
-
-        /*
         portno = atoi(port);
-        server_addrs[i]->sin_family = AF_INET;
-        inet_pton(AF_INET, ip, &(server_addrs[i]->sin_addr));
-        inet_pton(AF_INET, port, &(server_addrs[i]->sin_port));
-        */
+        server_addrs[i]->sin_port = htons(portno);
     }
     
 
