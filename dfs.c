@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
@@ -26,7 +28,7 @@ void list(int sock_fd, char * buf, char * username){
 }
 
 //todo: write main thread routine to serve all requests
-void serve(void * connection){
+void * serve(void * connection){
     int sock_fd, bytes;
     sock_fd = *(int *) connection;
     free(connection);
@@ -59,12 +61,12 @@ void serve(void * connection){
             list(sock_fd, buf, username);
         }
     }
-    
+    return NULL;
 }
 
 //todo: write main
 int main(int argc, char ** argv){
-    int sock_fd, port, ready;
+    int sock_fd, port, ready, addr_len;
     int *  connection;
     struct sockaddr_in server_addr;
     pthread_t tid;
@@ -72,9 +74,11 @@ int main(int argc, char ** argv){
     struct  timeval timeout;
     //todo: read config file
     port = 8080;
+    addr_len = sizeof(server_addr);
         //todo: create username password data structure (linked list?) alternativley, just parse through config file each time
             //practice: hash and salt passwords
             //practice: implement a more efficient username lookup
+        //todo: parse command line and open appropriate directory
     //create socket
     if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0){
         perror("socket failed");
@@ -104,10 +108,10 @@ int main(int argc, char ** argv){
         }
         else if (ready){
             connection = malloc(sizeof(int));
-            if ((*connection = accept(sock_fd, &server_addr, sizeof(server_addr))) < 0){
+            if ((*connection = accept(sock_fd,(struct sockaddr *) &server_addr, (socklen_t *)&addr_len)) < 0){
                 perror("accept failed");
             }
-            pthread_create(&tid, NULL, serve, (void *)connection);
+            pthread_create(&tid, NULL, serve, (void *) connection);
             pthread_detach(tid);
         }
          //todo: accept connection and spawn new thread
