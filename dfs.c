@@ -60,7 +60,17 @@ void get(int sock_fd, char * buf, char * username, char * filename){
 
 void put(int sock_fd, char * buf, char * username, char * filename){
     char chunkname[150];
-    snprintf(chunkname, sizeof(chunkname), "%s%s/.%s.#", dir, username, filename); //practice: construct chunkname more intelligently
+    char chunk1;
+    char chunk2;
+    int namesize;
+    namesize = snprintf(chunkname, sizeof(chunkname), "%s%s/.%s.#", dir, username, filename); //practice: construct chunkname more intelligently
+
+    if (recv(sock_fd, buf, 1028, 0) < 0){
+        printf("recv failed recieving chunk numbers");
+    }
+    chunk1 = buf[0];
+    chunk2 = buf[1];
+    chunkname[namesize - 1] = chunk1;
     //todo: receive chunk #s
     //todo: request each chunk
         //todo: build name
