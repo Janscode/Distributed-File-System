@@ -6,7 +6,8 @@
 #include <sys/time.h>
 #include <pthread.h>
 //todo: import standard io, networking, and multithreading libraries
-
+char * dir;
+char * config;
 //todo: write thread to serve get request
 void get(int sock_fd, char * buf, char * username, char * filename){
     //todo ec: report what chunks of file are here, wait for requests
@@ -72,13 +73,15 @@ int main(int argc, char ** argv){
     pthread_t tid;
     fd_set sock_set;
     struct  timeval timeout;
-    //todo: read config file
     port = 8080;
     addr_len = sizeof(server_addr);
-        //todo: create username password data structure (linked list?) alternativley, just parse through config file each time
-            //practice: hash and salt passwords
-            //practice: implement a more efficient username lookup
-        //todo: parse command line and open appropriate directory
+
+    if (argc != 3){
+        printf("Usage: dfs <dir> <config>\n");
+        exit(1);
+    }
+    dir = argv[1];
+    config = argv[2];
     //create socket
     if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0){
         perror("socket failed");
