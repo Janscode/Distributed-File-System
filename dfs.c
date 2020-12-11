@@ -7,7 +7,7 @@
 #include <pthread.h>
 //todo: import standard io, networking, and multithreading libraries
 char * dir;
-char * config;
+char * config = "dfs.config";
 //todo: write thread to serve get request
 void get(int sock_fd, char * buf, char * username, char * filename){
     char chunkname[150];
@@ -71,13 +71,13 @@ void * serve(void * connection){
 
 //todo: write main
 int main(int argc, char ** argv){
-    int sock_fd, port, ready, addr_len;
+    int sock_fd, portno, ready, addr_len;
     int *  connection;
     struct sockaddr_in server_addr;
     pthread_t tid;
     fd_set sock_set;
     struct  timeval timeout;
-    port = 8080;
+    
     addr_len = sizeof(server_addr);
     //store command line args todo: mkdir if dir dne
     if (argc != 3){
@@ -85,7 +85,7 @@ int main(int argc, char ** argv){
         exit(1);
     }
     dir = argv[1];
-    config = argv[2];
+    portno = atoi(argv[2]);
     //create socket
     if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0){
         perror("socket failed");
@@ -94,7 +94,7 @@ int main(int argc, char ** argv){
     //build server address
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(port);
+    server_addr.sin_port = htons(portno);
     //bind socket to port number
     if (bind(sock_fd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0){
         perror("bind failed");
