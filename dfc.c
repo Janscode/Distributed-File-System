@@ -98,14 +98,70 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
                 }
                 //check that credentials where correct
                 if (!strncmp(buf, "ok", 2)){
-                    bytes = snprintf(buf, 1028, "%c%c",  partitions[partition][0] + '0', partitions[partition][1] + '0');
+                    //send chunk #'s
+                    bytes = snprintf(buf, 1028, "%c%c",  partitions[partition][0] + '0', partitions[partition][1] + '0'); 
                     if (send(sock_fd, buf, bytes, 0) < 0){
                         perror("send failed for chunk #s");
                     }
-                    printf("%s\n", buf);
-                    //todo: send initial request, get ok back, send appropriate chunks according to partition strategy
-                    //send first chunk
-                    //send second chunk
+                    printf("1\n");
+                    //build chunk 1 name
+                    chunkname[strlen(filename) + 2] = partitions[partition][0] + '0';
+                    chunk_fd = fopen(chunkname, "r");
+                    printf("2\n");
+                    //receive confirmation
+                    if (recv(sock_fd, buf, 1028, 0) < 0){
+                        perror("recv failed getting request for chunk 1");
+                    }
+                    printf("3\n");
+                    //send content
+                    buf[0] = 'c';
+                    while ((bytes = fread(buf + 1, sizeof(char), 1027, chunk_fd)) > 0){
+                        if (bytes < 1027){
+                            buf[0] = 'd'; //if this is the last transmission, let the server know
+                        }
+                        if (send(sock_fd, buf, bytes+1, 0) < 0){
+                            perror("send failed sending chunk 1");
+                        }
+                    }
+                    if (bytes == 1027){
+                        //incase the last transmission perfectly filled the buffer, send the end signal
+                        buf[0] = 'd';
+                        if (send(sock_fd, buf, 1, 0) < 0){
+                            perror("send failed on end of chunk 1");
+                        }
+                    }
+                    printf("4\n");
+                    fclose(chunk_fd);
+                    //build chunk 2 name
+                    chunkname[strlen(filename) + 2] = partitions[partition][1] + '0';
+                    chunk_fd = fopen(chunkname, "r");
+                    //receive confirmation
+                    printf("5\n");
+                    if (recv(sock_fd, buf, 1027, 0) < 0){
+                        perror("recv failed getting request for chunk 2");
+                    }
+                    printf("6\n");
+                    //send content
+                    buf[0] = 'c';
+                    while ((bytes = fread(buf + 1, sizeof(char), 1027, chunk_fd)) > 0){
+                        printf("%s\n", buf);
+                        if (bytes < 1027){
+                            buf[0] = 'd'; //if this is the last transmission, let the server know
+                        }
+                        if (send(sock_fd, buf, bytes+1, 0) < 0){
+                            perror("send failed sending chunk 2");
+                        }
+                    }
+                    if (bytes == 1027){
+                        //incase the last transmission perfectly filled the buffer, send the end signal
+                        buf[0] = 'd';
+                        if (send(sock_fd, buf, 1, 0) < 0){
+                            perror("send failed on end of chunk 2");
+                    }
+                    }
+                    
+                    printf("7\n");
+                    fclose(chunk_fd);
                 }
                 else if (!strcmp(buf, "Invalid Username/Password. Please try again.")){
                     printf("Invalid Username/Password. Please try again.\n"); //todo: only print this once and exit

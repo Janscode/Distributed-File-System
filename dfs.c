@@ -63,21 +63,67 @@ void put(int sock_fd, char * buf, char * username, char * filename){
     char chunk1;
     char chunk2;
     int namesize;
+    int bytes;
+    FILE * chunk_fd;
+    //build name template
     namesize = snprintf(chunkname, sizeof(chunkname), "%s%s/.%s.#", dir, username, filename); //practice: construct chunkname more intelligently
-
+    //receive chunk #'s
     if (recv(sock_fd, buf, 1028, 0) < 0){
         printf("recv failed recieving chunk numbers");
     }
     chunk1 = buf[0];
     chunk2 = buf[1];
+    //build first name and open file
     chunkname[namesize - 1] = chunk1;
-    //todo: receive chunk #s
-    //todo: request each chunk
-        //todo: build name
-        //todo: open file
-        //todo: send chunk #
-        //todo: close file
-    //practice: make all sockets able to timeout after a while
+    chunk_fd = fopen(chunkname, "w");
+    //send ready confirmation
+    printf("1\n");
+    if (send(sock_fd, &chunk1, 1, 0) < 0){
+        perror("send failed requesting chunk 1");
+    }
+    printf("2\n");
+    //receive and write data for chunk 1
+    bzero(buf, 1028);
+    while((bytes = recv(sock_fd, buf, 1028, 0)) > 0){
+        printf("%s\n", buf);
+        //use first byte as transmission over message
+        fwrite(buf + 1, sizeof(char), bytes - 1, chunk_fd);
+        if (buf[0] == 'd'){
+            break;
+        }
+        bzero(buf, 1028);
+    }
+    printf("3\n");
+    if (bytes < 0){
+        perror("recv failed getting chunk 1");
+    }
+    fclose(chunk_fd);
+    //build second name
+    printf("4\n");
+    chunkname[namesize - 1] = chunk2;
+    //open file
+    fopen(chunkname, "w");
+    //send ready confirmation
+    printf("5\n");
+    if (send(sock_fd, &chunk2, 1, 0) < 0){
+        perror("send failed requesting chunk 2");
+    }
+    printf("6\n");
+    //receive and write data for chunk 2
+    bzero(buf, 1028);
+    while((bytes = recv(sock_fd, buf, 1028, 0)) > 0){
+        printf("%s\n", buf);
+        fwrite(buf + 1, sizeof(char), bytes - 1, chunk_fd);
+        if (buf[0] == 'd'){
+            break;
+        }
+        bzero(buf, 1028);
+    }
+    printf("7\n");
+    if (bytes < 0){
+        perror("recv failed getting chunk 2");
+    }
+    fclose(chunk_fd);
 }
 
 void list(int sock_fd, char * buf, char * username){
