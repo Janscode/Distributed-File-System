@@ -74,8 +74,9 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
         for (int i = 0; i < NUM_SERVERS; i++){
             //figure out partition strategy
             partition = i - hash;
-            if (partition < 0) partition += NUM_SERVERS;
-
+            if (partition < 0) {
+                partition += NUM_SERVERS;
+            }
             if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
                 perror("socket failed");
             }
@@ -86,15 +87,28 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
                 perror("connect failed");
             }
             else{
+                //send initial request with credentials
                 bytes = snprintf(buf, 1028, "%s %s put %s", username, password, filename); //practice: look into if this is the right way
                 if (send(sock_fd, buf, bytes, 0) < 0){
                     perror("send failed");
                 };
+                //receive response
+                if ((bytes = recv(sock_fd, buf, 1028, 0)) < 0){
+                    perror("error on recv initial response");
+                }
+                //check that credentials where correct
+                if (!strncmp(buf, "ok", 2)){
+                    //todo: send initial request, get ok back, send appropriate chunks according to partition strategy
+                    //send first chunk
+                    //send second chunk
+                }
+                else if (!strcmp(buf, "Invalid Username/Password. Please try again.")){
+                    printf("Invalid Username/Password. Please try again.\n"); //todo: only print this once and exit
+                }
+                else{
+                    printf("Something is wrong with server %d\n", i + 1);
+                }
             }                
-            //todo: send initial request, get ok back, send appropriate chunks according to partition strategy
-            //send first chunk
-            //send second chunk
-
             close(sock_fd);
         }
         //todo: delete local files
