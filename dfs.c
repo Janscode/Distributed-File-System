@@ -79,7 +79,7 @@ int main(int argc, char ** argv){
     struct  timeval timeout;
     port = 8080;
     addr_len = sizeof(server_addr);
-
+    //store command line args todo: mkdir if dir dne
     if (argc != 3){
         printf("Usage: dfs <dir> <config>\n");
         exit(1);
