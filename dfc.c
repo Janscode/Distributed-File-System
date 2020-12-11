@@ -80,10 +80,17 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
                 perror("socket failed");
             }
             //todo: make connection timeout after 1 second
+            printf("%d\n", i);
+
             if (connect(sock_fd, (struct sockaddr *) server_addrs[i], sizeof(*server_addrs[i])) < 0){
                 perror("connect failed");
             }
-            
+            else{
+                bytes = snprintf(buf, 1028, "%s %s put %s", username, password, filename); //practice: look into if this is the right way
+                if (send(sock_fd, buf, bytes, 0) < 0){
+                    perror("send failed");
+                };
+            }                
             //todo: send initial request, get ok back, send appropriate chunks according to partition strategy
             //send first chunk
             //send second chunk
@@ -95,7 +102,7 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
 }
 //practice: write put request multi thread routine (one thread for each server)
 
-void get(char * filename, char * username, char * password, struct sockaddr_in server_addrs[NUM_SERVERS]){
+void get(char * filename, char * username, char * password, struct sockaddr_in * server_addrs[NUM_SERVERS]){
     FILE * chunk_fd;
     FILE * dest_fd;
     int bytes;
@@ -179,8 +186,12 @@ int main(int argc, char ** argv){
         portno = atoi(port);
         server_addrs[i]->sin_port = htons(portno);
     }
-    
 
+    fgets(line, 128, config_fd); //practice: handle invalid config files
+    sscanf(line, "%*s %s", username);
+    fgets(line, 128, config_fd); //practice: handle invalid config files
+    sscanf(line, "%*s %s", password);
+    fclose(config_fd);
     //todo: read dfc.config
         //todo: store server information / build address structs
         //todo: store username / password info or request it if it doesn't exist
