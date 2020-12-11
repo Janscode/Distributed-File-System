@@ -17,6 +17,39 @@ struct filenode{
     struct filenode * next;
 };
 
+/* search the list for the file, create if it doesn't exist, and mark the appropriate chunk*/
+void file_list_add(struct filenode ** node, char * filename, int chunknum){
+    int exists = 0;
+    while(*node == NULL){
+        if (!strcmp((*node)->filename, filename)){
+            (*node)->chunksreceived[chunknum - 1] = 1;
+            exists = 1;
+        }
+        node = &((*node)->next);
+    }
+    if (!exists){
+        *node = malloc(sizeof(struct filenode));
+        strcpy((*node)->filename, filename);
+        (*node)->chunksreceived[chunknum - 1] = 1;
+    }
+}
+
+/*both print and delete the file linked list */
+void file_list_consume(struct filenode * node){
+    struct filenode * lastnode;
+    while (node != NULL){
+        if (node->chunksreceived[0] || node->chunksreceived[1] || node->chunksreceived[2] || node->chunksreceived[3]){
+            printf("%s", node->filename);
+        }
+        else{
+            printf("%s [incomplete]", node->filename);
+        }
+        lastnode = node;
+        node = node->next;
+        free(lastnode);
+    }
+}
+
 void put(char * filename, char * username, char * password, struct sockaddr_in * server_addrs[NUM_SERVERS]){
     FILE * source_fd;
     FILE * chunk_fd;
