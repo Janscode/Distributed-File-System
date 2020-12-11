@@ -98,6 +98,11 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
                 }
                 //check that credentials where correct
                 if (!strncmp(buf, "ok", 2)){
+                    bytes = snprintf(buf, 1028, "%c%c",  partitions[partition][0] + '0', partitions[partition][1] + '0');
+                    if (send(sock_fd, buf, bytes, 0) < 0){
+                        perror("send failed for chunk #s");
+                    }
+                    printf("%s\n", buf);
                     //todo: send initial request, get ok back, send appropriate chunks according to partition strategy
                     //send first chunk
                     //send second chunk
