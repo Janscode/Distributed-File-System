@@ -9,9 +9,14 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 #define NUM_SERVERS 4 //practice: make this work for variable number of servers
-//todo: import standard io, networking, (maybe) multithreading, and hashing
 
-//todo: write put request
+//struct to keep track of what chunks of a file exist across all servers
+struct filenode{
+    char filename[40];
+    int chunksreceived[4];
+    struct filenode * next;
+};
+
 void put(char * filename, char * username, char * password, struct sockaddr_in * server_addrs[NUM_SERVERS]){
     FILE * source_fd;
     FILE * chunk_fd;
@@ -270,8 +275,8 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
         chunkname[strlen(filename) + 2] = i + '0';
         printf("%s\n",chunkname);
         chunk_fd = fopen(chunkname, "r");
-        if (chunk_fd == 0){
-            printf("here\n");
+        if (chunk_fd == NULL){
+            printf("File Incomplete\n");
         }
         printf("hnnere\n");
         while((bytes = fread(buf, sizeof(char), 1028, chunk_fd))){
@@ -290,6 +295,49 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
     //practice: write get request multi thread routine
 
 //todo: write list request
+void list (char * username, char * password, struct sockaddr_in * server_addrs[NUM_SERVERS]){
+    int sock_fd, bytes;
+    char buf[1028];
+    int chunk;
+    for (int i = 0; i < NUM_SERVERS; i++){
+        if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+            perror("socket failed");
+        }
+        //todo: make connection timeout after 1 second
+        //make initial connection
+        printf("Contacting server %d.\n", i);
+        if (connect(sock_fd, (struct sockaddr *) server_addrs[i], sizeof(*server_addrs[i])) < 0){
+            perror("connect failed");
+        }
+        else{
+            //send initial request with authentication credentials
+            bytes = snprintf(buf, 1028, "%s %s list", username, password); //practice: look into if this is the right way, make sure this is safe
+            if (send(sock_fd, buf, bytes, 0) < 0){
+                perror("send failed");
+            };
+            //receive authentication response
+            if ((bytes = recv(sock_fd, buf, 1028, 0)) < 0){
+                perror("error on recv initial response");
+            }
+            printf("Got initial response %s.\n", buf);
+            //check that credentials where correct
+            if (!strncmp(buf, "ok", 2)){
+                //send ready byte
+                if (send(sock_fd, buf, 1, 0) < 0){
+                    perror("send failed on ready byte");
+                }
+                printf("Sent ready byte %d.\n", buf[0]);   
+            }
+            else if (!strcmp(buf, "Invalid Username/Password. Please try again.")){
+                printf("Invalid Username/Password. Please try again.\n"); //todo: only print this once and exit
+            }
+            else{
+                printf("Something is wrong with server %d\n", i + 1);
+            }
+        }                
+        close(sock_fd);
+    }
+}
     //todo: write list request main thread
         //todo: for each server, initiate connection
             //todo: traverse or add to e a linked list that stores file names, and mark a byte for each chunk
@@ -384,7 +432,7 @@ int main(int argc, char ** argv){
         }
         else if (!strncmp(command, "list", 4)){
             if (numargs == 1){
-               printf("list request\n");
+               list(username, password, server_addrs);
             }
             else{
                 printf("list does not take any arguments\n");
