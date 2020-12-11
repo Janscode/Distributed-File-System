@@ -2,11 +2,17 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <openssl/md5.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h> 
 #define NUM_SERVERS 4 //practice: make this work for variable number of servers
 //todo: import standard io, networking, (maybe) multithreading, and hashing
 
 //todo: write put request
-void put(char * filename, char * username, char * password, struct sockaddr_in server_addrs[NUM_SERVERS]){
+void put(char * filename, char * username, char * password, struct sockaddr_in * server_addrs[NUM_SERVERS]){
     FILE * source_fd;
     FILE * chunk_fd;
     unsigned char digest[MD5_DIGEST_LENGTH];
@@ -65,7 +71,7 @@ void put(char * filename, char * username, char * password, struct sockaddr_in s
         fclose(source_fd);
 
         //ec: encrypt chunks with simple encryption (xor password for now)
-        for (int i = 0; i <= NUM_SERVERS; i++){
+        for (int i = 0; i < NUM_SERVERS; i++){
             //figure out partition strategy
             partition = i - hash;
             if (partition < 0) partition += NUM_SERVERS;
@@ -74,7 +80,8 @@ void put(char * filename, char * username, char * password, struct sockaddr_in s
                 perror("socket failed");
             }
             //todo: make connection timeout after 1 second
-            if (connect(sock_fd, (struct sockaddr *) server_addrs + i, sizeof(server_addrs[i])) < 0){
+            printf("%d\n", i);
+            if (connect(sock_fd, (struct sockaddr *) server_addrs[i], sizeof(*server_addrs[i])) < 0){
                 perror("connect failed");
             }
             
@@ -134,9 +141,54 @@ void get(char * filename, char * username, char * password, struct sockaddr_in s
     //practice: write list request multi thread routine
 
 int main(int argc, char ** argv){
-    struct sockaddr_in server_addrs[NUM_SERVERS];
+    struct sockaddr_in * server_addrs[NUM_SERVERS];
+    struct sockaddr_in server_addr1;
+    struct sockaddr_in server_addr2;
+    struct sockaddr_in server_addr3;
+    struct sockaddr_in server_addr4;
+    server_addrs[0] = &server_addr1;
+    server_addrs[1] = &server_addr2;
+    server_addrs[2] = &server_addr3;
+    server_addrs[3] = &server_addr4;
+
     char username[45];
     char password[45];
+    FILE * config_fd;
+    char line[128]; //practice: revisit size limitations for everything
+    char ip[20];
+    char port[8];
+    struct hostent *server;
+    int portno;
+
+    if (argc != 2){
+        printf("Usage: dfc <config>");
+        exit(1);
+    }
+    config_fd = fopen(argv[1], "r");
+    for (int i = 0; i < NUM_SERVERS; i++){ //practice: recognize which lines are servers and which are username/password
+        fgets(line, 128, config_fd);
+        sscanf(line, "%*s %*s %s", line);
+        sscanf(line, "%[^':']:%s", ip, port);
+        sscanf(line, "%[^':']:%*s", ip);
+        printf("ip%s port%s\n", ip, port);
+
+        
+        bzero((char *) server_addrs[i], sizeof(*server_addrs[i]));
+        server_addrs[i]->sin_family = AF_INET;
+        server = gethostbyname("127.0.0.1"); //todo: fix this
+        portno = atoi(port);
+        bcopy((char *)server->h_addr, (char *)&(server_addrs[i]->sin_addr.s_addr), server->h_length);
+        
+
+        /*
+        portno = atoi(port);
+        server_addrs[i]->sin_family = AF_INET;
+        inet_pton(AF_INET, ip, &(server_addrs[i]->sin_addr));
+        inet_pton(AF_INET, port, &(server_addrs[i]->sin_port));
+        */
+    }
+    
+
     //todo: read dfc.config
         //todo: store server information / build address structs
         //todo: store username / password info or request it if it doesn't exist
