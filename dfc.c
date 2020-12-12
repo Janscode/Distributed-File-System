@@ -19,28 +19,28 @@ struct filenode{
 
 /* search the list for the file, create if it doesn't exist, and mark the appropriate chunk*/
 void file_list_add(struct filenode ** node, char * filename, int chunknum){
-    printf("here\n");
     int exists = 0;
     while(*node != NULL){
-        printf("here2\n");
         if (!strcmp((*node)->filename, filename)){
-            printf("here3\n");
+            printf("Marking %d\n", chunknum);
             (*node)->chunksreceived[chunknum - 1] = 1;
+            printf("Marked\n");
             exists = 1;
         }
-        printf("here4\n");
         node = &((*node)->next);
-        printf("here5\n");
     }
-    printf("here6\n");
     if (!exists){
-        printf("here7\n");
         *node = malloc(sizeof(struct filenode));
-        printf("here8\n");
+        printf("Here\n");
         strcpy((*node)->filename, filename);
-        printf("here9\n");
+        (*node)->chunksreceived[0] = 0;
+        (*node)->chunksreceived[1] = 0;
+        (*node)->chunksreceived[2] = 0;
+        (*node)->chunksreceived[3] = 0;
+        (*node)->next = NULL;
+        printf("Marking %d\n", chunknum);
         (*node)->chunksreceived[chunknum - 1] = 1;
-        printf("here10\n");
+        printf("Marked\n");
     }
 }
 
@@ -199,16 +199,17 @@ void put(char * filename, char * username, char * password, struct sockaddr_in *
                     }
                     fclose(chunk_fd);
                 }
-                else if (!strcmp(buf, "Invalid Username/Password. Please try again.")){
-                    printf("Invalid Username/Password. Please try again.\n"); //todo: only print this once and exit
-                }
                 else{
-                    printf("Something is wrong with server %d\n", i + 1);
+                    printf("Invalid Username/Password. Please try again.\n");
                 }
             }                
             close(sock_fd);
         }
-        //todo: delete local files
+        //delete local chunk files
+        for (int i = 1; i <=  NUM_SERVERS; i++){
+            chunkname[strlen(filename) + 2] = i + '0';
+            remove(chunkname);
+        }
     }
 }
 //practice: write put request multi thread routine (one thread for each server)
@@ -303,16 +304,13 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
                     }
                 }         
             }
-            else if (!strcmp(buf, "Invalid Username/Password. Please try again.")){
-                printf("Invalid Username/Password. Please try again.\n"); //todo: only print this once and exit
-            }
             else{
-                printf("Something is wrong with server %d\n", i + 1);
+                printf("Invalid Username/Password. Please try again.\n");
             }
         }                
         close(sock_fd);
     }
-
+    //reassemble chunks (decrypt here)
     dest_fd = fopen(filename, "w");
     for (int i = 1; i <=  NUM_SERVERS; i++){
         chunkname[strlen(filename) + 2] = i + '0';
@@ -327,15 +325,10 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
             fwrite(buf, sizeof(char), bytes, dest_fd);
         }
         fclose(chunk_fd);
+        remove(chunkname); //todo: test
     }
     fclose(dest_fd);
 }
-    //todo: write get request main thread
-         
-        //todo: reassemble chunks into main file ec: decrypt chunks
-        //todo: delete local files
-
-    //practice: write get request multi thread routine
 
 //todo: write list request
 void list (char * username, char * password, struct sockaddr_in * server_addrs[NUM_SERVERS]){
@@ -352,7 +345,6 @@ void list (char * username, char * password, struct sockaddr_in * server_addrs[N
         }
         //todo: make connection timeout after 1 second
         //make initial connection
-        printf("Contacting server %d.\n", i);
         if (connect(sock_fd, (struct sockaddr *) server_addrs[i], sizeof(*server_addrs[i])) < 0){
             perror("connect failed");
         }
@@ -366,40 +358,34 @@ void list (char * username, char * password, struct sockaddr_in * server_addrs[N
             if ((bytes = recv(sock_fd, buf, 1028, 0)) < 0){
                 perror("error on recv initial response");
             }
-            printf("Got initial response %s.\n", buf);
             //check that credentials where correct
             if (!strncmp(buf, "ok", 2)){
                 //send ready byte
                 if (send(sock_fd, buf, 1, 0) < 0){
                     perror("send failed on ready byte");
                 }
-                printf("Sent ready byte %c.\n", buf[0]);
+                //get chunk details line by line
                 while(1){
                     if ((bytes = recv(sock_fd, buf, 1028, 0)) < 0){
                         perror("recv failed getting chunk info");
                     }
-
-                    printf("%s\n", buf); //todo: check if the transmission is done, add to linked list
+                    //check if the transmission is done
                     if (buf[0] == 'd'){
                         break;
                     }
                     buf[bytes - 2] = '\0';
-                    printf("%s\n", buf); //todo: check if the transmission is done, add to linked lis
                     buf[bytes] = '\0';
-                    printf("%s\n", buf); //todo: check if the transmission is done, add to linked lis
                     sscanf(buf + bytes - 1, "%d", &chunknum);
-                    printf("%d\n", chunknum); 
-                    file_list_add(&filelist, buf, chunknum);
+                    printf("here\n");
+                    printf("%s\n", buf);
+                    file_list_add(&filelist, buf + 1, chunknum);
                     if (send(sock_fd, buf, 1, 0) < 0){
                         perror("send failed on confirmation byte");
                     }
                 }   
             }
-            else if (!strcmp(buf, "Invalid Username/Password. Please try again.")){
-                printf("Invalid Username/Password. Please try again.\n"); //todo: only print this once and exit
-            }
             else{
-                printf("Something is wrong with server %d\n", i + 1);
+                printf("Invalid Username/Password. Please try again.\n");
             }
         }
         //todo: consume linked list                
@@ -444,7 +430,7 @@ int main(int argc, char ** argv){
         sscanf(line, "%*s %*s %s", line);
         sscanf(line, "%[^':']:%s", ip, port);
         sscanf(line, "%[^':']:%*s", ip);
-        printf("ip%s port%s\n", ip, port);
+        printf("ip:%s port:%s\n", ip, port);
         
         bzero((char *) server_addrs[i], sizeof(*server_addrs[i]));
         server_addrs[i]->sin_family = AF_INET;
