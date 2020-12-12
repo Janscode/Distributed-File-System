@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <netdb.h> 
 #include <dirent.h>
@@ -15,7 +16,13 @@ char * dir;
 //practice: use named semaphores to lock off user directories to prevent race conditions
 
 void checkdir(char * username){ //todo: check if username directory exists, if it doesn't, create it
-    
+    char path[128];
+    struct stat st = {0};
+    snprintf(path, 128, "%s%s/", dir, username);
+     printf("%s\n", path);
+    if (stat(path, &st) == -1){
+        mkdir(path, 0700); //practice: review how file permissions work: what's the mininum acceptable permissions for this assignment? why would you want to restrict permissions?
+    }
 }
 
 int checkcreds(char * candidate_username, char* candidate_password){
@@ -274,6 +281,7 @@ int main(int argc, char ** argv){
     pthread_t tid;
     fd_set sock_set;
     struct  timeval timeout;
+    struct stat st = {0};
     
     addr_len = sizeof(server_addr);
     //store command line args todo: mkdir if dir dne
@@ -281,7 +289,11 @@ int main(int argc, char ** argv){
         printf("Usage: dfs <dir> <config>\n");
         exit(1);
     }
-    dir = argv[1]; //practice: if dir does not end with /, append it
+    dir = argv[1];
+    //if the server's directory doesn't exist, construct it
+    if (stat(dir, &st) == -1){
+        mkdir(dir, 0777);
+    }
     portno = atoi(argv[2]);
     //create socket
     if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0){
