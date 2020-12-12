@@ -218,15 +218,14 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
     FILE * chunk_fd;
     FILE * dest_fd;
     int bytes, sock_fd;
+    int chunksreceived[4] = {0, 0, 0, 0};
     char buf[1028];
     char chunkname[43];
-
     //build chunkname template
     strcpy(chunkname+1,filename);
     chunkname[0] = '.';
     chunkname[strlen(filename) + 1] = '.';
     chunkname[strlen(filename) + 3] = '\0';
-    
     /*contact each server and download the neccesary chunks*/
     for (int i = 0; i < NUM_SERVERS; i++){
         if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -267,10 +266,12 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
                         break;
                     }
                     else{
+                        //build chunkname
                         chunkname[strlen(filename) + 2] = buf[0];
+                        //try if chunk is already present
                         chunk_fd = fopen(chunkname, "r");
                         if (chunk_fd != NULL){
-                        //if chunk is already here, let server know
+                            //if chunk is already here, let server know
                             fclose(chunk_fd);
                             buf[0] = 'd';
                             if (send(sock_fd, buf, 1, 0) < 0){
@@ -278,6 +279,7 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
                             }
                         }
                         else{
+                            chunksreceived[atoi(buf) - 1] = 1; //todo: test
                             //if the chunk is not already saved, request it
                             buf[0] = 'c';
                             if (send(sock_fd, buf, 1, 0) < 0){
@@ -310,24 +312,36 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
         }                
         close(sock_fd);
     }
-    //reassemble chunks (decrypt here)
-    dest_fd = fopen(filename, "w");
-    for (int i = 1; i <=  NUM_SERVERS; i++){
-        chunkname[strlen(filename) + 2] = i + '0';
-        printf("%s\n",chunkname);
-        chunk_fd = fopen(chunkname, "r");
-        if (chunk_fd == NULL){
-            printf("File Incomplete\n");
+    if (chunksreceived[0] && chunksreceived[1] && chunksreceived[2] && chunksreceived[3]){
+        //reassemble chunks (decrypt here)
+        dest_fd = fopen(filename, "w");
+        for (int i = 1; i <=  NUM_SERVERS; i++){
+            chunkname[strlen(filename) + 2] = i + '0';
+            printf("%s\n",chunkname);
+            chunk_fd = fopen(chunkname, "r");
+            if (chunk_fd == NULL){
+                printf("File Incomplete\n");
+            }
+            printf("hnnere\n");
+            while((bytes = fread(buf, sizeof(char), 1028, chunk_fd))){
+                printf("%d\n", bytes);
+                fwrite(buf, sizeof(char), bytes, dest_fd);
+            }
+            fclose(chunk_fd);
+            remove(chunkname); //todo: test
         }
-        printf("hnnere\n");
-        while((bytes = fread(buf, sizeof(char), 1028, chunk_fd))){
-            printf("%d\n", bytes);
-            fwrite(buf, sizeof(char), bytes, dest_fd);
-        }
-        fclose(chunk_fd);
-        remove(chunkname); //todo: test
+        fclose(dest_fd);
     }
-    fclose(dest_fd);
+    else{
+        printf("File incomplete\n");
+        for (int i = 1; i <=  NUM_SERVERS; i++){
+            if (chunksreceived[i - 1]){
+                chunkname[strlen(filename) + 2] = i + '0';
+                remove(chunkname); //todo: test
+            }
+        }
+    }
+    
 }
 
 //todo: write list request
