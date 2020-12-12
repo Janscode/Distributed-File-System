@@ -331,7 +331,6 @@ int main(int argc, char ** argv){
             pthread_create(&tid, NULL, serve, (void *) connection);
             pthread_detach(tid);
         }
-         //todo: accept connection and spawn new thread
     }
     
     
