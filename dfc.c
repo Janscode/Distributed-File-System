@@ -22,25 +22,25 @@ void file_list_add(struct filenode ** node, char * filename, int chunknum){
     int exists = 0;
     while(*node != NULL){
         if (!strcmp((*node)->filename, filename)){
-            printf("Marking %d\n", chunknum);
+            
             (*node)->chunksreceived[chunknum - 1] = 1;
-            printf("Marked\n");
+            
             exists = 1;
         }
         node = &((*node)->next);
     }
     if (!exists){
         *node = malloc(sizeof(struct filenode));
-        printf("Here\n");
+        
         strcpy((*node)->filename, filename);
         (*node)->chunksreceived[0] = 0;
         (*node)->chunksreceived[1] = 0;
         (*node)->chunksreceived[2] = 0;
         (*node)->chunksreceived[3] = 0;
         (*node)->next = NULL;
-        printf("Marking %d\n", chunknum);
+        
         (*node)->chunksreceived[chunknum - 1] = 1;
-        printf("Marked\n");
+        
     }
 }
 
@@ -233,7 +233,7 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
         }
         //todo: make connection timeout after 1 second
         //make initial connection
-        printf("Contacting server %d.\n", i);
+        
         if (connect(sock_fd, (struct sockaddr *) server_addrs[i], sizeof(*server_addrs[i])) < 0){
             perror("connect failed");
         }
@@ -247,20 +247,20 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
             if ((bytes = recv(sock_fd, buf, 1028, 0)) < 0){
                 perror("error on recv initial response");
             }
-            printf("Got initial response %s.\n", buf);
+            
             //check that credentials where correct
             if (!strncmp(buf, "ok", 2)){
                 //send ready byte
                 if (send(sock_fd, buf, 1, 0) < 0){
                     perror("send failed on ready byte");
                 }
-                printf("Sent ready byte %d.\n", buf[0]);
+                
                 while(1){
                      //get chunk #
                     if (recv(sock_fd, buf, 1027, 0) < 0){
                         perror("recv failed getting chunk #");
                     }
-                    printf("Got back byte %c.\n", buf[0]);
+                    
                     //if instead of a chunk number there is a 'd', there are no more chunks on the server
                     if (buf[0] == 'd'){
                         break;
@@ -289,7 +289,7 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
                             //download the chunk
                             bzero(buf, 1028);
                             while((bytes = recv(sock_fd, buf, 1028, 0)) > 0){
-                                printf("%s\n", buf);
+                                
                                 //use first byte as transmission over message
                                 fwrite(buf + 1, sizeof(char), bytes - 1, chunk_fd);
                                 if (buf[0] == 'd'){
@@ -317,14 +317,14 @@ void get(char * filename, char * username, char * password, struct sockaddr_in *
         dest_fd = fopen(filename, "w");
         for (int i = 1; i <=  NUM_SERVERS; i++){
             chunkname[strlen(filename) + 2] = i + '0';
-            printf("%s\n",chunkname);
+
             chunk_fd = fopen(chunkname, "r");
             if (chunk_fd == NULL){
                 printf("File Incomplete\n");
             }
-            printf("hnnere\n");
+
             while((bytes = fread(buf, sizeof(char), 1028, chunk_fd))){
-                printf("%d\n", bytes);
+                
                 fwrite(buf, sizeof(char), bytes, dest_fd);
             }
             fclose(chunk_fd);
@@ -390,8 +390,7 @@ void list (char * username, char * password, struct sockaddr_in * server_addrs[N
                     buf[bytes - 2] = '\0';
                     buf[bytes] = '\0';
                     sscanf(buf + bytes - 1, "%d", &chunknum);
-                    printf("here\n");
-                    printf("%s\n", buf);
+                    
                     file_list_add(&filelist, buf + 1, chunknum);
                     if (send(sock_fd, buf, 1, 0) < 0){
                         perror("send failed on confirmation byte");
